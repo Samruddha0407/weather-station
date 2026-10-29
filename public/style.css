@@ -1,0 +1,233 @@
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #1e293b;
+  background: #eff6ff;
+}
+
+body {
+  margin: 0;
+  padding: 28px 16px;
+  min-height: 100vh;
+}
+
+.dashboard-container {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+h1 {
+  margin-bottom: 8px;
+  color: #0f3b75;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+}
+
+.subtitle {
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.panel {
+  background: #fff;
+  padding: 24px;
+  margin-bottom: 22px;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+h2 {
+  margin-top: 0;
+  color: #174b87;
+}
+
+#weatherForm,
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+input {
+  flex: 1;
+  min-width: 150px;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: white;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+input:focus {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+}
+
+button {
+  padding: 12px 17px;
+  border: none;
+  border-radius: 9px;
+  background: #2563eb;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondary-button {
+  background: #0f766e;
+}
+
+.secondary-button:hover {
+  background: #115e59;
+}
+
+#message,
+#historyMessage,
+#knowledgeMessage {
+  min-height: 20px;
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 14px;
+  margin: 24px 0;
+}
+
+.card {
+  padding: 20px 12px;
+  text-align: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+
+.card h3 {
+  margin: 0 0 12px;
+  color: #64748b;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.card .value {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.update-text {
+  color: #64748b;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.list-container {
+  display: grid;
+  gap: 12px;
+}
+
+.history-item,
+.knowledge-item {
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  background: #f8fafc;
+  overflow-wrap: anywhere;
+}
+
+.history-item h3,
+.knowledge-item h3 {
+  margin: 0 0 9px;
+  color: #1d4ed8;
+}
+
+.history-item p,
+.knowledge-item p {
+  line-height: 1.6;
+}
+
+.history-time,
+.category,
+.tags {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.category {
+  font-weight: 700;
+}
+
+.knowledge-item a {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+footer {
+  padding: 14px;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+footer a {
+  color: #1d4ed8;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 600px) {
+  body {
+    padding: 16px 10px;
+  }
+
+  .panel {
+    padding: 17px;
+  }
+
+  #weatherForm,
+  .inline-form {
+    flex-direction: column;
+  }
+
+  input,
+  button {
+    width: 100%;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .card .value {
+    font-size: 1.15rem;
+  }
+}

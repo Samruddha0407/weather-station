@@ -1,0 +1,371 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Live weather reports and weather knowledge">
+  <title>Weather Station Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="dashboard-container">
+    <header>
+      <h1>🌦️ Weather Station</h1>
+      <p class="subtitle">
+        Live weather, saved reports and weather knowledge
+      </p>
+    </header>
+
+    <!-- WEATHER SEARCH -->
+    <section class="panel">
+      <h2>Check Current Weather</h2>
+
+      <form id="weatherForm">
+        <input
+          type="text"
+          id="location"
+          placeholder="Enter a city, e.g. Pune"
+          autocomplete="off"
+          required
+        >
+        <button type="submit" id="searchButton">
+          Check Weather
+        </button>
+      </form>
+
+      <p id="message" role="status" aria-live="polite">
+        Enter a city to get started.
+      </p>
+
+      <section id="weatherResult" class="card-grid" hidden>
+        <article class="card">
+          <h3>Location</h3>
+          <p class="value" id="city">--</p>
+        </article>
+
+        <article class="card">
+          <h3>Temperature</h3>
+          <p class="value"><span id="temp">--</span> °C</p>
+        </article>
+
+        <article class="card">
+          <h3>Humidity</h3>
+          <p class="value"><span id="humidity">--</span>%</p>
+        </article>
+
+        <article class="card">
+          <h3>Condition</h3>
+          <p class="value" id="status">--</p>
+        </article>
+
+        <article class="card">
+          <h3>Wind Speed</h3>
+          <p class="value"><span id="wind">--</span> km/h</p>
+        </article>
+      </section>
+
+      <p id="updated" class="update-text"></p>
+    </section>
+
+    <!-- WEATHER HISTORY -->
+    <section class="panel">
+      <h2>Weather Report History</h2>
+
+      <form id="historyForm" class="inline-form">
+        <input
+          type="text"
+          id="historyCity"
+          placeholder="Filter by city (optional)"
+        >
+        <input
+          type="number"
+          id="historyLimit"
+          min="1"
+          max="200"
+          value="50"
+          aria-label="Number of reports"
+        >
+        <button type="submit">Load Reports</button>
+      </form>
+
+      <p id="historyMessage" role="status"></p>
+      <div id="historyList" class="list-container"></div>
+    </section>
+
+    <!-- WEATHER KNOWLEDGE -->
+    <section class="panel">
+      <h2>Weather Knowledge Base</h2>
+      <p class="subtitle">
+        Learn about weather conditions and safety.
+      </p>
+
+      <form id="knowledgeSearchForm" class="inline-form">
+        <input
+          type="search"
+          id="knowledgeQuery"
+          placeholder="Search rain, humidity, monsoon..."
+        >
+        <button type="submit">Search</button>
+        <button type="button" id="allKnowledgeButton"
+          class="secondary-button">Show All</button>
+      </form>
+
+      <p id="knowledgeMessage" role="status"></p>
+      <div id="knowledgeList" class="list-container"></div>
+    </section>
+
+    <footer>
+      <p>Weather data provided by Open-Meteo.</p>
+      <p><a href="/health" target="_blank" rel="noreferrer">
+        Check server health
+      </a></p>
+    </footer>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function weatherCondition(code) {
+      if (code === 0) return "Clear sky";
+      if ([1, 2, 3].includes(code)) return "Partly cloudy";
+      if ([45, 48].includes(code)) return "Foggy";
+      if ([51, 53, 55, 56, 57].includes(code)) return "Drizzle";
+      if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "Rainy";
+      if ([71, 73, 75, 77, 85, 86].includes(code)) return "Snowy";
+      if ([95, 96, 99].includes(code)) return "Thunderstorm";
+      return "Unknown condition";
+    }
+
+    async function getJSON(url, options) {
+      const response = await fetch(url, options);
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.message || "Request failed.");
+      }
+
+      return data;
+    }
+
+    // ---------------- WEATHER SEARCH ----------------
+
+    $("weatherForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const location = $("location").value.trim();
+      if (!location) return;
+
+      $("searchButton").disabled = true;
+      $("searchButton").textContent = "Loading...";
+      $("message").textContent = "Fetching weather...";
+      $("weatherResult").hidden = true;
+
+      try {
+        const geocodingURL =
+          "https://geocoding-api.open-meteo.com/v1/search?name=" +
+          encodeURIComponent(location) +
+          "&count=1&language=en&format=json";
+
+        const geoData = await getJSON(geocodingURL);
+
+        if (!geoData.results || geoData.results.length === 0) {
+          throw new Error("City not found. Please try another city.");
+        }
+
+        const place = geoData.results[0];
+
+        const weatherURL =
+          "https://api.open-meteo.com/v1/forecast" +
+          `?latitude=${place.latitude}` +
+          `&longitude=${place.longitude}` +
+          "&current=temperature_2m,relative_humidity_2m," +
+          "apparent_temperature,precipitation,weather_code," +
+          "wind_speed_10m,surface_pressure" +
+          "&timezone=auto";
+
+        const weatherData = await getJSON(weatherURL);
+        const current = weatherData.current;
+
+        if (!current) {
+          throw new Error("Current weather data is unavailable.");
+        }
+
+        const cityName = place.name +
+          (place.country ? ", " + place.country : "");
+
+        const condition = weatherCondition(current.weather_code);
+
+        // Save each requested reading in Atlas.
+        await getJSON("/weather/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            city: cityName,
+            temperature: current.temperature_2m,
+            humidity: current.relative_humidity_2m,
+            status: condition,
+            windSpeed: current.wind_speed_10m,
+            weatherCode: current.weather_code,
+            feelsLike: current.apparent_temperature,
+            precipitation: current.precipitation,
+            pressure: current.surface_pressure
+          })
+        });
+
+        $("city").textContent = cityName;
+        $("temp").textContent = current.temperature_2m;
+        $("humidity").textContent = current.relative_humidity_2m;
+        $("status").textContent = condition;
+        $("wind").textContent = current.wind_speed_10m;
+
+        $("updated").textContent =
+          "Weather time: " +
+          current.time.replace("T", " ") +
+          " (" + weatherData.timezone + ")";
+
+        $("weatherResult").hidden = false;
+        $("message").textContent =
+          "Weather loaded and saved to MongoDB Atlas.";
+
+        await loadHistory();
+      } catch (error) {
+        $("message").textContent = error.message;
+      } finally {
+        $("searchButton").disabled = false;
+        $("searchButton").textContent = "Check Weather";
+      }
+    });
+
+    // ---------------- WEATHER HISTORY ----------------
+
+    async function loadHistory(event) {
+      if (event) event.preventDefault();
+
+      const city = $("historyCity").value.trim();
+      const rawLimit = Number($("historyLimit").value) || 50;
+      const limit = Math.min(Math.max(rawLimit, 1), 200);
+
+      $("historyMessage").textContent = "Loading reports...";
+      $("historyList").replaceChildren();
+
+      try {
+        const params = new URLSearchParams({ limit: String(limit) });
+        if (city) params.set("city", city);
+
+        const records = await getJSON(
+          "/weather/history?" + params.toString()
+        );
+
+        $("historyMessage").textContent =
+          records.length + " report(s) found.";
+
+        if (records.length === 0) {
+          $("historyList").textContent = "No reports found.";
+          return;
+        }
+
+        records.forEach((record) => {
+          const item = document.createElement("article");
+          item.className = "history-item";
+
+          const heading = document.createElement("h3");
+          heading.textContent = record.city;
+
+          const details = document.createElement("p");
+          details.textContent =
+            `${record.temperature} °C | ${record.humidity}% humidity | ` +
+            `${record.status} | Wind: ${record.windSpeed} km/h`;
+
+          const time = document.createElement("p");
+          time.className = "history-time";
+          time.textContent =
+            new Date(record.timestamp).toLocaleString();
+
+          item.append(heading, details, time);
+          $("historyList").appendChild(item);
+        });
+      } catch (error) {
+        $("historyMessage").textContent = error.message;
+      }
+    }
+
+    $("historyForm").addEventListener("submit", loadHistory);
+
+    // ---------------- KNOWLEDGE SEARCH ----------------
+
+    async function loadKnowledge(query = "") {
+      $("knowledgeMessage").textContent = "Loading articles...";
+      $("knowledgeList").replaceChildren();
+
+      try {
+        const params = new URLSearchParams();
+        if (query.trim()) params.set("q", query.trim());
+
+        const articles = await getJSON(
+          "/knowledge" + (params.size ? "?" + params.toString() : "")
+        );
+
+        $("knowledgeMessage").textContent =
+          articles.length + " article(s) found.";
+
+        if (articles.length === 0) {
+          $("knowledgeList").textContent =
+            "No articles found. Add articles through the knowledge API.";
+          return;
+        }
+
+        articles.forEach((article) => {
+          const item = document.createElement("article");
+          item.className = "knowledge-item";
+
+          const title = document.createElement("h3");
+          title.textContent = article.title;
+
+          const category = document.createElement("p");
+          category.className = "category";
+          category.textContent = article.category;
+
+          const content = document.createElement("p");
+          content.textContent = article.content;
+
+          const tags = document.createElement("p");
+          tags.className = "tags";
+          tags.textContent = (article.tags || [])
+            .map(tag => "#" + tag)
+            .join(" ");
+
+          item.append(title, category, content, tags);
+
+          if (article.sourceUrl) {
+            const source = document.createElement("a");
+            source.href = article.sourceUrl;
+            source.target = "_blank";
+            source.rel = "noopener noreferrer";
+            source.textContent = "Read source";
+            item.appendChild(source);
+          }
+
+          $("knowledgeList").appendChild(item);
+        });
+      } catch (error) {
+        $("knowledgeMessage").textContent = error.message;
+      }
+    }
+
+    $("knowledgeSearchForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      loadKnowledge($("knowledgeQuery").value);
+    });
+
+    $("allKnowledgeButton").addEventListener("click", () => {
+      $("knowledgeQuery").value = "";
+      loadKnowledge();
+    });
+
+    // Load saved content when the page opens.
+    loadHistory();
+    loadKnowledge();
+  </script>
+</body>
+</html>
